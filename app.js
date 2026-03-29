@@ -38,7 +38,16 @@
     // Cache matchups per pokemon id
     let matchupCache = {};
 
-    const GEN_NAMES = { 1: 'Generation I — Kanto', 2: 'Generation II — Johto' };
+    const GEN_NAMES = {
+        1: 'Generation I — Kanto',
+        2: 'Generation II — Johto',
+        3: 'Generation III — Hoenn',
+        4: 'Generation IV — Sinnoh',
+        5: 'Generation V — Unova',
+        6: 'Generation VI — Kalos',
+        7: 'Generation VII — Alola',
+        8: 'Generation VIII — Galar'
+    };
 
     // ===== Navigation =====
     document.querySelectorAll('.gen-btn').forEach(btn => {
