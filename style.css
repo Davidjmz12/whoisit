@@ -134,6 +134,8 @@ header h2 {
     border-bottom: 1px solid #2a2a4a;
     display: flex;
     flex-direction: column;
+    /* Never let the sticky panel exceed 55% of the viewport */
+    max-height: 55vh;
 }
 
 #filters-strip {
@@ -175,8 +177,9 @@ header h2 {
     flex-direction: column;
     gap: 10px;
     padding: 12px 24px 14px;
-    overflow: hidden;
-    max-height: 800px;
+    overflow-y: auto;       /* scroll if type rows overflow */
+    overflow-x: hidden;
+    max-height: 800px;      /* desktop: generous, collapsible via transition */
     opacity: 1;
     transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.25s ease;
 }
@@ -186,6 +189,18 @@ header h2 {
     opacity: 0;
     padding-top: 0;
     padding-bottom: 0;
+    overflow: hidden;
+}
+
+/* Action buttons always visible — lives outside the scroll area */
+#filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 24px 12px;
+    border-top: 1px solid #2a2a4a;
+    flex-shrink: 0;
 }
 
 .filter-group {
@@ -240,13 +255,6 @@ header h2 {
 
 .evo-filter-btn {
     background: #555;
-}
-
-#filter-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
 }
 
 #filter-match-count {
@@ -627,6 +635,7 @@ header h2 {
     #filter-actions {
         gap: 6px;
         flex-wrap: wrap;
+        padding: 8px 12px 10px;
     }
 
     .filter-action-btn {
