@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Who's That Pokémon?</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Generation Selection -->
+    <div id="gen-select">
+        <h1>Who's That Pokémon?</h1>
+        <p class="subtitle">Select a generation to begin</p>
+        <div class="gen-buttons">
+            <button class="gen-btn" data-gen="1">Generation I<br><small>Kanto · #001–151</small></button>
+            <button class="gen-btn" data-gen="2">Generation II<br><small>Johto · #152–251</small></button>
+        </div>
+    </div>
+
+    <!-- Game Page -->
+    <div id="game">
+        <header>
+            <button id="back-btn">← Back</button>
+            <h2 id="gen-title">Generation I</h2>
+            <span id="active-count"></span>
+        </header>
+        <div id="type-filters"></div>
+        <div id="pokemon-grid"></div>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="modal-overlay">
+        <div id="info-modal">
+            <button id="modal-close">×</button>
+            <div id="modal-content"></div>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
