@@ -7,6 +7,7 @@
     const evoFiltersEl = document.getElementById('evo-filters');
     const weakFiltersEl = document.getElementById('weak-filters');
     const resistFiltersEl = document.getElementById('resist-filters');
+    const typingFiltersEl = document.getElementById('typing-filters');
     const pokemonGrid = document.getElementById('pokemon-grid');
     const modalOverlay = document.getElementById('modal-overlay');
     const modalContent = document.getElementById('modal-content');
@@ -17,6 +18,10 @@
     const clearFiltersBtn = document.getElementById('clear-filters');
     const filterMatchCount = document.getElementById('filter-match-count');
     const resetBtn = document.getElementById('reset-btn');
+    const toggleFiltersBtn = document.getElementById('toggle-filters');
+    const filtersContent = document.getElementById('filters-content');
+    const showActiveOnlyBtn = document.getElementById('show-active-only');
+    const deactivateOthersBtn = document.getElementById('deactivate-others');
 
     // State
     let currentGen = null;
@@ -26,6 +31,9 @@
     let selectedEvos = new Set();
     let selectedWeaknesses = new Set();
     let selectedResistances = new Set();
+    let selectedTypingCounts = new Set();
+    let filtersOpen = true;
+    let showActiveOnly = false;
 
     // Cache matchups per pokemon id
     let matchupCache = {};
@@ -62,9 +70,19 @@
         selectedEvos.clear();
         selectedWeaknesses.clear();
         selectedResistances.clear();
+        selectedTypingCounts.clear();
+
+        // Reset UI state
+        filtersOpen = true;
+        showActiveOnly = false;
+        filtersContent.classList.remove('collapsed');
+        pokemonGrid.classList.remove('hide-deactivated');
+        showActiveOnlyBtn.classList.remove('active');
+        toggleFiltersBtn.textContent = '▲ Hide';
 
         renderTypeFilters();
         renderEvoFilters();
+        renderTypingFilters();
         renderWeakFilters();
         renderResistFilters();
         renderGrid();
@@ -106,6 +124,21 @@
                 applyFilters();
             });
             evoFiltersEl.appendChild(btn);
+        });
+    }
+
+    // ===== Number-of-types Filter Buttons =====
+    function renderTypingFilters() {
+        typingFiltersEl.innerHTML = '';
+        [1, 2].forEach(count => {
+            const btn = document.createElement('button');
+            btn.className = 'evo-filter-btn';
+            btn.textContent = count === 1 ? 'Single type' : 'Dual type';
+            btn.addEventListener('click', () => {
+                toggleSetAndBtn(selectedTypingCounts, count, btn);
+                applyFilters();
+            });
+            typingFiltersEl.appendChild(btn);
         });
     }
 
@@ -173,7 +206,7 @@
 
     // ===== Apply Filters (show/hide + highlight) =====
     function hasAnyFilter() {
-        return selectedTypes.size > 0 || selectedEvos.size > 0 || selectedWeaknesses.size > 0 || selectedResistances.size > 0;
+        return selectedTypes.size > 0 || selectedEvos.size > 0 || selectedTypingCounts.size > 0 || selectedWeaknesses.size > 0 || selectedResistances.size > 0;
     }
 
     function getFilteredIds() {
@@ -182,9 +215,10 @@
         return genPokemon.filter(p => {
             const typeMatch = selectedTypes.size === 0 || p.types.some(t => selectedTypes.has(t));
             const evoMatch = selectedEvos.size === 0 || selectedEvos.has(p.evolutions);
+            const typingCountMatch = selectedTypingCounts.size === 0 || selectedTypingCounts.has(p.types.length);
             const weakMatch = matchesWeakness(p.id);
             const resistMatch = matchesResistance(p.id);
-            return typeMatch && evoMatch && weakMatch && resistMatch;
+            return typeMatch && evoMatch && typingCountMatch && weakMatch && resistMatch;
         }).map(p => p.id);
     }
 
@@ -207,6 +241,7 @@
 
         deactivateBtn.disabled = !hasFilter;
         activateBtn.disabled = !hasFilter;
+        deactivateOthersBtn.disabled = !hasFilter;
         clearFiltersBtn.disabled = !hasFilter;
 
         if (hasFilter) {
@@ -242,10 +277,39 @@
     clearFiltersBtn.addEventListener('click', () => {
         selectedTypes.clear();
         selectedEvos.clear();
+        selectedTypingCounts.clear();
         selectedWeaknesses.clear();
         selectedResistances.clear();
         document.querySelectorAll('#filters-bar .active').forEach(b => b.classList.remove('active'));
         applyFilters();
+    });
+
+    // ===== Toggle filters panel =====
+    toggleFiltersBtn.addEventListener('click', () => {
+        filtersOpen = !filtersOpen;
+        filtersContent.classList.toggle('collapsed', !filtersOpen);
+        toggleFiltersBtn.textContent = filtersOpen ? '▲ Hide' : '▼ Filters';
+    });
+
+    // ===== Only show active =====
+    showActiveOnlyBtn.addEventListener('click', () => {
+        showActiveOnly = !showActiveOnly;
+        showActiveOnlyBtn.classList.toggle('active', showActiveOnly);
+        pokemonGrid.classList.toggle('hide-deactivated', showActiveOnly);
+    });
+
+    // ===== Deactivate others (pokemon NOT matching current filter) =====
+    deactivateOthersBtn.addEventListener('click', () => {
+        const filteredIds = getFilteredIds();
+        if (!filteredIds) return;
+        genPokemon.forEach(p => {
+            if (!filteredIds.includes(p.id)) {
+                pokemonStates[p.id] = false;
+                const card = document.querySelector(`.poke-card[data-id="${p.id}"]`);
+                if (card) card.classList.add('deactivated');
+            }
+        });
+        updateActiveCount();
     });
 
     // ===== Reset: activate all pokemon =====

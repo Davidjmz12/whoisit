@@ -21,34 +21,49 @@
 
     <!-- Game Page -->
     <div id="game">
-        <header>
-            <button id="back-btn">← Back</button>
-            <h2 id="gen-title">Generation I</h2>
-            <span id="active-count"></span>
-            <button id="reset-btn">Reset all</button>
-        </header>
-        <div id="filters-bar">
-            <div class="filter-group">
-                <span class="filter-label">Filter by type:</span>
-                <div id="type-filters" class="filter-options"></div>
-            </div>
-            <div class="filter-group">
-                <span class="filter-label">Filter by evolutions:</span>
-                <div id="evo-filters" class="filter-options"></div>
-            </div>
-            <div class="filter-group">
-                <span class="filter-label">Weak to:</span>
-                <div id="weak-filters" class="filter-options"></div>
-            </div>
-            <div class="filter-group">
-                <span class="filter-label">Resists:</span>
-                <div id="resist-filters" class="filter-options"></div>
-            </div>
-            <div id="filter-actions">
-                <span id="filter-match-count"></span>
-                <button id="deactivate-filtered" class="filter-action-btn" disabled>Deactivate shown</button>
-                <button id="activate-filtered" class="filter-action-btn" disabled>Activate shown</button>
-                <button id="clear-filters" class="filter-action-btn secondary" disabled>Clear filters</button>
+        <div id="sticky-header">
+            <header>
+                <button id="back-btn">← Back</button>
+                <h2 id="gen-title">Generation I</h2>
+                <span id="active-count"></span>
+                <button id="reset-btn">Reset all</button>
+            </header>
+            <div id="filters-bar">
+                <div id="filters-strip">
+                    <span id="filters-strip-label">Filters</span>
+                    <button id="toggle-filters" class="toggle-filters-btn">▲ Hide</button>
+                </div>
+                <div id="filters-content">
+                    <div class="filter-group">
+                        <span class="filter-label">Filter by type:</span>
+                        <div id="type-filters" class="filter-options"></div>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Filter by evolutions:</span>
+                        <div id="evo-filters" class="filter-options"></div>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Number of types:</span>
+                        <div id="typing-filters" class="filter-options"></div>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Weak to:</span>
+                        <div id="weak-filters" class="filter-options"></div>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Resists:</span>
+                        <div id="resist-filters" class="filter-options"></div>
+                    </div>
+                    <div id="filter-actions">
+                        <button id="show-active-only" class="filter-action-btn">Only active</button>
+                        <span id="filter-match-count"></span>
+                        <button id="deactivate-filtered" class="filter-action-btn" disabled>Deactivate shown</button>
+                        <button id="activate-filtered" class="filter-action-btn" disabled>Activate shown</button>
+                        <button id="deactivate-others" class="filter-action-btn filter-danger-btn" disabled>Deactivate
+                            others</button>
+                        <button id="clear-filters" class="filter-action-btn secondary" disabled>Clear filters</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="pokemon-grid"></div>
