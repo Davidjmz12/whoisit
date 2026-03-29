@@ -3,16 +3,32 @@
     const gamePage = document.getElementById('game');
     const genTitle = document.getElementById('gen-title');
     const activeCount = document.getElementById('active-count');
-    const typeFilters = document.getElementById('type-filters');
+    const typeFiltersEl = document.getElementById('type-filters');
+    const evoFiltersEl = document.getElementById('evo-filters');
+    const weakFiltersEl = document.getElementById('weak-filters');
+    const resistFiltersEl = document.getElementById('resist-filters');
     const pokemonGrid = document.getElementById('pokemon-grid');
     const modalOverlay = document.getElementById('modal-overlay');
     const modalContent = document.getElementById('modal-content');
     const modalClose = document.getElementById('modal-close');
     const backBtn = document.getElementById('back-btn');
+    const deactivateBtn = document.getElementById('deactivate-filtered');
+    const activateBtn = document.getElementById('activate-filtered');
+    const clearFiltersBtn = document.getElementById('clear-filters');
+    const filterMatchCount = document.getElementById('filter-match-count');
+    const resetBtn = document.getElementById('reset-btn');
 
     // State
     let currentGen = null;
-    let pokemonStates = {}; // id -> boolean (true = active)
+    let genPokemon = [];
+    let pokemonStates = {};
+    let selectedTypes = new Set();
+    let selectedEvos = new Set();
+    let selectedWeaknesses = new Set();
+    let selectedResistances = new Set();
+
+    // Cache matchups per pokemon id
+    let matchupCache = {};
 
     const GEN_NAMES = { 1: 'Generation I — Kanto', 2: 'Generation II — Johto' };
 
@@ -35,54 +51,215 @@
         gamePage.style.display = 'flex';
         genTitle.textContent = GEN_NAMES[gen] || `Generation ${gen}`;
 
-        const genPokemon = POKEMON.filter(p => p.gen === gen).sort((a, b) => a.id - b.id);
+        genPokemon = POKEMON.filter(p => p.gen === gen).sort((a, b) => a.id - b.id);
         pokemonStates = {};
-        genPokemon.forEach(p => { pokemonStates[p.id] = true; });
+        matchupCache = {};
+        genPokemon.forEach(p => {
+            pokemonStates[p.id] = true;
+            matchupCache[p.id] = calcMatchups(p.types);
+        });
+        selectedTypes.clear();
+        selectedEvos.clear();
+        selectedWeaknesses.clear();
+        selectedResistances.clear();
 
-        renderTypeFilters(genPokemon);
-        renderGrid(genPokemon);
-        updateActiveCount(genPokemon);
+        renderTypeFilters();
+        renderEvoFilters();
+        renderWeakFilters();
+        renderResistFilters();
+        renderGrid();
+        applyFilters();
+        updateActiveCount();
     }
 
-    // ===== Type Filter Bar =====
-    function renderTypeFilters(genPokemon) {
-        typeFilters.innerHTML = '';
-
-        const label = document.createElement('span');
-        label.className = 'filter-label';
-        label.textContent = 'Deactivate by type:';
-        typeFilters.appendChild(label);
-
-        // Find types that actually exist in this gen
+    // ===== Type Filter Buttons =====
+    function renderTypeFilters() {
+        typeFiltersEl.innerHTML = '';
         const typesInGen = new Set();
         genPokemon.forEach(p => p.types.forEach(t => typesInGen.add(t)));
 
-        const sorted = ALL_TYPES.filter(t => typesInGen.has(t));
-        sorted.forEach(type => {
+        ALL_TYPES.filter(t => typesInGen.has(t)).forEach(type => {
             const btn = document.createElement('button');
             btn.className = 'type-filter-btn';
             btn.textContent = type;
             btn.style.background = TYPE_COLORS[type];
             btn.addEventListener('click', () => {
-                deactivateByType(type, genPokemon);
+                toggleSetAndBtn(selectedTypes, type, btn);
+                applyFilters();
             });
-            typeFilters.appendChild(btn);
+            typeFiltersEl.appendChild(btn);
         });
     }
 
-    function deactivateByType(type, genPokemon) {
+    // ===== Evolution Filter Buttons =====
+    function renderEvoFilters() {
+        evoFiltersEl.innerHTML = '';
+        const evosInGen = new Set();
+        genPokemon.forEach(p => evosInGen.add(p.evolutions));
+
+        [...evosInGen].sort((a, b) => a - b).forEach(evo => {
+            const btn = document.createElement('button');
+            btn.className = 'evo-filter-btn';
+            btn.textContent = evo === 1 ? 'No evo' : `${evo} stages`;
+            btn.addEventListener('click', () => {
+                toggleSetAndBtn(selectedEvos, evo, btn);
+                applyFilters();
+            });
+            evoFiltersEl.appendChild(btn);
+        });
+    }
+
+    // ===== Weakness Filter Buttons =====
+    function renderWeakFilters() {
+        weakFiltersEl.innerHTML = '';
+        ALL_TYPES.forEach(type => {
+            const btn = document.createElement('button');
+            btn.className = 'type-filter-btn';
+            btn.textContent = type;
+            btn.style.background = TYPE_COLORS[type];
+            btn.addEventListener('click', () => {
+                toggleSetAndBtn(selectedWeaknesses, type, btn);
+                applyFilters();
+            });
+            weakFiltersEl.appendChild(btn);
+        });
+    }
+
+    // ===== Resistance Filter Buttons =====
+    function renderResistFilters() {
+        resistFiltersEl.innerHTML = '';
+        ALL_TYPES.forEach(type => {
+            const btn = document.createElement('button');
+            btn.className = 'type-filter-btn';
+            btn.textContent = type;
+            btn.style.background = TYPE_COLORS[type];
+            btn.addEventListener('click', () => {
+                toggleSetAndBtn(selectedResistances, type, btn);
+                applyFilters();
+            });
+            resistFiltersEl.appendChild(btn);
+        });
+    }
+
+    // ===== Helper: toggle set + button =====
+    function toggleSetAndBtn(set, value, btn) {
+        if (set.has(value)) {
+            set.delete(value);
+            btn.classList.remove('active');
+        } else {
+            set.add(value);
+            btn.classList.add('active');
+        }
+    }
+
+    // ===== Check if pokemon matches weakness/resistance filters =====
+    function matchesWeakness(pokemonId) {
+        if (selectedWeaknesses.size === 0) return true;
+        const m = matchupCache[pokemonId];
+        for (const type of selectedWeaknesses) {
+            if (m[type] < 2) return false; // must be weak to ALL selected
+        }
+        return true;
+    }
+
+    function matchesResistance(pokemonId) {
+        if (selectedResistances.size === 0) return true;
+        const m = matchupCache[pokemonId];
+        for (const type of selectedResistances) {
+            if (m[type] >= 1) return false; // must resist (or be immune to) ALL selected
+        }
+        return true;
+    }
+
+    // ===== Apply Filters (show/hide + highlight) =====
+    function hasAnyFilter() {
+        return selectedTypes.size > 0 || selectedEvos.size > 0 || selectedWeaknesses.size > 0 || selectedResistances.size > 0;
+    }
+
+    function getFilteredIds() {
+        if (!hasAnyFilter()) return null;
+
+        return genPokemon.filter(p => {
+            const typeMatch = selectedTypes.size === 0 || p.types.some(t => selectedTypes.has(t));
+            const evoMatch = selectedEvos.size === 0 || selectedEvos.has(p.evolutions);
+            const weakMatch = matchesWeakness(p.id);
+            const resistMatch = matchesResistance(p.id);
+            return typeMatch && evoMatch && weakMatch && resistMatch;
+        }).map(p => p.id);
+    }
+
+    function applyFilters() {
+        const filteredIds = getFilteredIds();
+        const hasFilter = filteredIds !== null;
+
         genPokemon.forEach(p => {
-            if (p.types.includes(type)) {
-                pokemonStates[p.id] = false;
-                const card = document.querySelector(`.poke-card[data-id="${p.id}"]`);
-                if (card) card.classList.add('deactivated');
+            const card = document.querySelector(`.poke-card[data-id="${p.id}"]`);
+            if (!card) return;
+
+            if (!hasFilter) {
+                card.classList.remove('filter-hidden', 'filter-highlight');
+            } else {
+                const matches = filteredIds.includes(p.id);
+                card.classList.toggle('filter-hidden', !matches);
+                card.classList.toggle('filter-highlight', matches);
             }
         });
-        updateActiveCount(genPokemon);
+
+        deactivateBtn.disabled = !hasFilter;
+        activateBtn.disabled = !hasFilter;
+        clearFiltersBtn.disabled = !hasFilter;
+
+        if (hasFilter) {
+            filterMatchCount.textContent = `${filteredIds.length} match${filteredIds.length !== 1 ? 'es' : ''}`;
+        } else {
+            filterMatchCount.textContent = '';
+        }
     }
 
+    // ===== Bulk actions on filtered =====
+    deactivateBtn.addEventListener('click', () => {
+        const filteredIds = getFilteredIds();
+        if (!filteredIds) return;
+        filteredIds.forEach(id => {
+            pokemonStates[id] = false;
+            const card = document.querySelector(`.poke-card[data-id="${id}"]`);
+            if (card) card.classList.add('deactivated');
+        });
+        updateActiveCount();
+    });
+
+    activateBtn.addEventListener('click', () => {
+        const filteredIds = getFilteredIds();
+        if (!filteredIds) return;
+        filteredIds.forEach(id => {
+            pokemonStates[id] = true;
+            const card = document.querySelector(`.poke-card[data-id="${id}"]`);
+            if (card) card.classList.remove('deactivated');
+        });
+        updateActiveCount();
+    });
+
+    clearFiltersBtn.addEventListener('click', () => {
+        selectedTypes.clear();
+        selectedEvos.clear();
+        selectedWeaknesses.clear();
+        selectedResistances.clear();
+        document.querySelectorAll('#filters-bar .active').forEach(b => b.classList.remove('active'));
+        applyFilters();
+    });
+
+    // ===== Reset: activate all pokemon =====
+    resetBtn.addEventListener('click', () => {
+        genPokemon.forEach(p => {
+            pokemonStates[p.id] = true;
+            const card = document.querySelector(`.poke-card[data-id="${p.id}"]`);
+            if (card) card.classList.remove('deactivated');
+        });
+        updateActiveCount();
+    });
+
     // ===== Pokemon Grid =====
-    function renderGrid(genPokemon) {
+    function renderGrid() {
         pokemonGrid.innerHTML = '';
 
         genPokemon.forEach(p => {
@@ -137,7 +314,7 @@
             card.addEventListener('click', () => {
                 pokemonStates[p.id] = !pokemonStates[p.id];
                 card.classList.toggle('deactivated', !pokemonStates[p.id]);
-                updateActiveCount(genPokemon);
+                updateActiveCount();
             });
 
             pokemonGrid.appendChild(card);
@@ -145,7 +322,7 @@
     }
 
     // ===== Active Count =====
-    function updateActiveCount(genPokemon) {
+    function updateActiveCount() {
         const active = genPokemon.filter(p => pokemonStates[p.id]).length;
         activeCount.textContent = `${active} / ${genPokemon.length} remaining`;
     }
@@ -168,6 +345,7 @@
         }
 
         const imgFile = getImageFilename(pokemon.name);
+        const evoLabel = pokemon.evolutions === 1 ? 'No evolution' : `${pokemon.evolutions}-stage line`;
 
         modalContent.innerHTML = `
       <div class="modal-header">
@@ -178,6 +356,9 @@
             ${pokemon.types.map(t => `<span class="type-badge" style="background:${TYPE_COLORS[t]}">${t}</span>`).join('')}
           </div>
         </div>
+      </div>
+      <div class="modal-evo-info">
+        Evolution stages: <span class="evo-count">${evoLabel}</span>
       </div>
       <div class="matchup-section">
         <h4>Weaknesses</h4>
